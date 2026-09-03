@@ -14,6 +14,7 @@ let rankings = fallbackRankings
 const sheetId = '1ogpiw2qvxwtBVXr5hZGaQYMk3QYYPia7sFPHOEbwzew'
 const sheetUrl = (name) => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(name)}&cacheBust=${Date.now()}`
 const imageExtensions = ['jpg', 'jpeg', 'png', 'webp']
+const assetUrl = (path) => `${import.meta.env.BASE_URL}${path}`
 
 const stars = (score) => '★★★★★'.slice(0, Math.round(Number(score.replace(',', '.')) / 2))
 
@@ -53,7 +54,7 @@ const numericScore = (score) => Number(score.replace(',', '.'))
 
 const capitalizeName = (name) => name ? `${name.charAt(0).toUpperCase()}${name.slice(1)}` : name
 
-const localImageUrl = (name, extension = imageExtensions[0]) => `/imagenes/${encodeURIComponent(name.trim())}.${extension}`
+const localImageUrl = (name, extension = imageExtensions[0]) => assetUrl(`imagenes/${encodeURIComponent(name.trim())}.${extension}`)
 
 const localImageMarkup = (name) => `<img src="${localImageUrl(name)}" data-image-name="${name.trim()}" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
 
@@ -197,18 +198,18 @@ document.querySelector('#app').innerHTML = `
       <div class="evaluated-total"><strong id="evaluated-count">0</strong><span>alfajores<br>evaluados</span></div>
     </section>
     <section class="jury-intro">
-      <div class="jury-intro-photo"><img src="/jurados/jurado.png" alt="Foto grupal del jurado" onerror="this.onerror=null; this.src='/jurados/jurado.jpg'" /></div>
+      <div class="jury-intro-photo"><img src="${assetUrl('jurados/jurado.png')}" alt="Foto grupal del jurado" onerror="this.onerror=null; this.src='${assetUrl('jurados/jurado.jpg')}'" /></div>
       <div class="jury-intro-copy"><p class="eyebrow"><span></span> Emma presenta</p><h2>Un grupo de amigos,<br>una pasión en común.</h2><p>Somos un grupo de amigos de Córdoba Capital que se reúne para evaluar alfajores, comparar sabores y descubrir cuál merece llegar al primer puesto.</p><a class="text-link" href="#ranking">Conocé nuestro ranking <span>↓</span></a></div>
     </section>
     <section class="jury-section" id="jurados">
       <div class="jury-carousel" aria-label="Testimonios del jurado">
         <button class="carousel-button carousel-prev" type="button" aria-label="Testimonio anterior">←</button>
         <div class="jury-slides">
-          <article class="jury-slide is-active"><img src="/jurados/tomas.png" alt="Foto de Tomas"><div><p class="jury-number">01 / JURADO</p><h3>Tomas</h3><p>“Un gran alfajor tiene que respetar el equilibrio: que la masa acompañe, que el relleno abrace y que el último bocado invite a otro.”</p></div></article>
-          <article class="jury-slide"><img src="/jurados/isabella.png" alt="Foto de Isabella"><div><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p>“Busco una experiencia completa: textura, aroma y un sabor que se quede un rato más después de terminarlo.”</p></div></article>
-          <article class="jury-slide"><img src="/jurados/jazmin.png" alt="Foto de Jazmin"><div><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p>“El chocolate puede ser protagonista sin tapar lo demás. La clave está en cómo conversa con la masa y el dulce de leche.”</p></div></article>
-          <article class="jury-slide"><img src="/jurados/gaston.png" alt="Foto de Gaston"><div><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p>“La nota aparece en los detalles: una buena mordida, un baño parejo y esa sensación de querer volver a probar.”</p></div></article>
-          <article class="jury-slide"><img src="/jurados/emma.png" alt="Foto de Emma"><div><p class="jury-number">05 / JURADO</p><h3>Emma</h3><p>“Da da Gu gu Da da daaa Da da Gu gu...Da.”</p></div></article>
+          <article class="jury-slide is-active"><img src="${assetUrl('jurados/tomas.png')}" alt="Foto de Tomas"><div><p class="jury-number">01 / JURADO</p><h3>Tomas</h3><p>“Un gran alfajor tiene que respetar el equilibrio: que la masa acompañe, que el relleno abrace y que el último bocado invite a otro.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/isabella.png')}" alt="Foto de Isabella"><div><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p>“Busco una experiencia completa: textura, aroma y un sabor que se quede un rato más después de terminarlo.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/jazmin.png')}" alt="Foto de Jazmin"><div><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p>“El chocolate puede ser protagonista sin tapar lo demás. La clave está en cómo conversa con la masa y el dulce de leche.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/gaston.png')}" alt="Foto de Gaston"><div><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p>“La nota aparece en los detalles: una buena mordida, un baño parejo y esa sensación de querer volver a probar.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/emma.png')}" alt="Foto de Emma"><div><p class="jury-number">05 / JURADO</p><h3>Emma</h3><p>“Da da Gu gu Da da daaa Da da Gu gu...Da.”</p></div></article>
         </div>
         <button class="carousel-button carousel-next" type="button" aria-label="Testimonio siguiente">→</button>
       </div>
