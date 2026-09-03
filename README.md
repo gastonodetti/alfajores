@@ -7,20 +7,25 @@ Ranking informativo de alfajores conectado a Google Sheets.
 La pestaña `ranking` debe conservar esta estructura:
 
 - Columna A: Nombre
-- Columna B: Imagen insertada en la celda o sobre la fila
+- Columna B: opcional; las imágenes se cargan desde `public/imagenes`
 - Columna C: Categoría
 - Columna D: Puntaje final
-- Columna E: URL pública de la imagen
 
-El script para Google Apps Script está en `google-apps-script/generar-urls-imagenes.js`.
+Copiá cada imagen en `public/imagenes`. El nombre debe coincidir exactamente con el nombre del alfajor en la pestaña `podios`. Se admiten `.jpg`, `.jpeg`, `.png` y `.webp`; por ejemplo, `Luccianos dark 70.jpg`. La página busca esas imágenes localmente, sin depender de URLs públicas, Google Drive o la columna B.
 
-1. En Google Sheets, abrir **Extensiones > Apps Script**.
-2. Pegar el contenido del script y guardar.
-3. Recargar la hoja.
-4. Usar **Imágenes > Generar URLs públicas**.
-5. Aceptar los permisos la primera vez.
+## Fotos de los jurados
 
-El script procesa las imágenes de la pestaña `ranking`, las copia a una carpeta pública de Google Drive y escribe el enlace directo en la columna E. Si E ya tiene una URL, deja esa fila sin cambios. Al ejecutarlo nuevamente, procesa las imágenes nuevas.
+Copiá la foto grupal en `public/jurados/jurado.png`. También podés usar `jurado.jpg`.
+
+Las fotos individuales del carrusel deben estar en `public/jurados` con estos nombres:
+
+- `tomas.png`
+- `isabella.png`
+- `jazmin.png`
+- `gaston.png`
+- `emma.png`
+
+El carrusel muestra únicamente el nombre, la foto y el testimonio de cada jurado.
 
 ## Desarrollo
 

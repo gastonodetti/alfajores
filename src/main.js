@@ -13,6 +13,7 @@ let rankings = fallbackRankings
 
 const sheetId = '1ogpiw2qvxwtBVXr5hZGaQYMk3QYYPia7sFPHOEbwzew'
 const sheetUrl = (name) => `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(name)}&cacheBust=${Date.now()}`
+const imageExtensions = ['jpg', 'jpeg', 'png', 'webp']
 
 const stars = (score) => '★★★★★'.slice(0, Math.round(Number(score.replace(',', '.')) / 2))
 
@@ -52,6 +53,20 @@ const numericScore = (score) => Number(score.replace(',', '.'))
 
 const capitalizeName = (name) => name ? `${name.charAt(0).toUpperCase()}${name.slice(1)}` : name
 
+const localImageUrl = (name, extension = imageExtensions[0]) => `/imagenes/${encodeURIComponent(name.trim())}.${extension}`
+
+const localImageMarkup = (name) => `<img src="${localImageUrl(name)}" data-image-name="${name.trim()}" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
+
+window.tryNextLocalImage = (image) => {
+  const nextExtension = Number(image.dataset.imageExtension) + 1
+  if (nextExtension >= imageExtensions.length) {
+    image.style.display = 'none'
+    return
+  }
+  image.dataset.imageExtension = nextExtension
+  image.src = localImageUrl(image.dataset.imageName, imageExtensions[nextExtension])
+}
+
 const animateEvaluatedCount = (total) => {
   const counter = document.querySelector('#evaluated-count')
   if (!counter) return
@@ -78,16 +93,6 @@ const readEvaluatedTotal = (csv) => {
   return 90
 }
 
-const readRankingImages = (csv) => {
-  const images = new Map()
-  parseCsv(csv).slice(1).forEach((row) => {
-    const name = row[0]
-    const image = row[4]
-    if (name && image && /^https?:\/\//.test(image)) images.set(name.trim().toLowerCase(), image.trim())
-  })
-  return images
-}
-
 const readPodios = (csv) => {
   const rows = parseCsv(csv)
   const categories = { A: [], B: [], C: [] }
@@ -103,21 +108,21 @@ const readPodios = (csv) => {
       const score = row[column + 1]?.trim()
       if (!name || !/^\d{1,2}(?:,\d{1,3})?$/.test(score)) return
       const position = categories[category].length + 1
-      categories[category].push({ name: capitalizeName(name), score, category, position, type: `Categoría ${category}`, detail: `Puesto ${position} de la categoría ${category}.` })
+      categories[category].push({ name: capitalizeName(name), imageName: name, score, category, position, type: `Categoría ${category}`, detail: `Puesto ${position} de la categoría ${category}.` })
     })
   })
   return categories
 }
 
-const addImages = (items, images) => items.map((item, index) => ({
+const addImages = (items) => items.map((item) => ({
   ...item,
-  image: images.get(item.name.toLowerCase()) || fallbackRankings[index % fallbackRankings.length].image
+  image: localImageUrl(item.imageName || item.name)
 }))
 
 const rankingRow = (item) => `
   <article class="ranking-row">
     <span class="row-position">${String(item.position).padStart(2, '0')}</span>
-    <div class="row-thumb" style="background-image:url('${item.image}')"></div>
+    <div class="row-thumb">${localImageMarkup(item.imageName || item.name)}</div>
     <div class="row-name"><p>${item.type}</p><h3>${item.name}</h3></div>
     <p class="row-detail">${item.detail}</p>
     <div class="row-score"><strong>${item.score}</strong><span>/ 10</span></div>
@@ -138,13 +143,17 @@ const applySheetRankings = (updatedRankings, categories) => {
     card.querySelector('h3').textContent = item.name
     card.querySelector('.stars').innerHTML = `${stars(item.score)} <small>${item.score}</small>`
     card.querySelector('.podium-info > p:last-child').textContent = item.detail
-    card.querySelector('.card-image').style.backgroundImage = `url('${item.image}')`
+    const image = card.querySelector('.card-image img')
+    image.dataset.imageName = item.imageName || item.name
+    image.dataset.imageExtension = '0'
+    image.style.display = 'block'
+    image.src = localImageUrl(item.imageName || item.name)
   })
   document.querySelector('#general-ranking-list').innerHTML = rankingList(rankings)
   document.querySelector('#category-sections').innerHTML = Object.entries(categories).map(([category, items]) => `
     <div class="category-block">
       <div class="category-heading"><p class="eyebrow"><span></span> Categoría ${category}</p><h3>Ranking ${category}</h3><p>${items.length} alfajores evaluados</p></div>
-      <div class="category-list">${items.map((item) => `<div class="category-row"><strong>${String(item.position).padStart(2, '0')}</strong><div class="category-thumb" style="background-image:url('${item.image}')"></div><h4>${item.name}</h4><span>${item.score} / 10</span></div>`).join('')}</div>
+      <div class="category-list">${items.map((item) => `<div class="category-row"><strong>${String(item.position).padStart(2, '0')}</strong><div class="category-thumb">${localImageMarkup(item.imageName || item.name)}</div><h4>${item.name}</h4><span>${item.score} / 10</span></div>`).join('')}</div>
       ${items.length > 5 ? '<button class="expand-ranking" type="button" aria-expanded="false">Ver todos <span>↓</span></button>' : ''}
     </div>
   `).join('')
@@ -155,15 +164,14 @@ const applySheetRankings = (updatedRankings, categories) => {
 
 const loadSheetRankings = async () => {
   try {
-    const responses = await Promise.all([fetch(sheetUrl('podios')), fetch(sheetUrl('ranking'))])
-    if (responses.some((response) => !response.ok)) throw new Error('No se pudo leer la hoja')
-    const [podiosCsv, rankingCsv] = await Promise.all(responses.map((response) => response.text()))
+    const response = await fetch(sheetUrl('podios'))
+    if (!response.ok) throw new Error('No se pudo leer la hoja')
+    const podiosCsv = await response.text()
     const categories = readPodios(podiosCsv)
     animateEvaluatedCount(readEvaluatedTotal(podiosCsv))
-    const images = readRankingImages(rankingCsv)
-    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: 'Resultado actualizado desde la pestaña podios.' })), images)
+    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '' })))
     if (general.length < 5 || Object.values(categories).some((items) => !items.length)) throw new Error('La hoja no tiene suficientes resultados')
-    Object.keys(categories).forEach((category) => { categories[category] = addImages(categories[category], images) })
+    Object.keys(categories).forEach((category) => { categories[category] = addImages(categories[category]) })
     applySheetRankings(general, categories)
   } catch (error) {
     animateEvaluatedCount(90)
@@ -184,23 +192,28 @@ document.querySelector('#app').innerHTML = `
   </header>
 
   <main id="top">
-    <section class="hero">
-      <div class="hero-copy reveal">
-        <p class="eyebrow"><span></span> Observatorio del alfajor argentino</p>
-        <h1>El ranking<br><em>más dulce</em><br>del país.</h1>
-        <p class="intro">Probamos, comparamos y ordenamos los alfajores que forman parte de nuestra historia cotidiana.</p>
-        <div class="evaluated-total"><strong id="evaluated-count">0</strong><span>alfajores<br>evaluados</span></div>
-        <a class="text-link" href="#ranking">Ver el ranking <span>↓</span></a>
-      </div>
-      <div class="hero-art" aria-label="Alfajor de chocolate sobre una mesa de madera">
-        <div class="stamp">100%<br><small>alfajor</small></div>
-        <div class="sun"></div>
-        <div class="alfajor alfajor-back"></div>
-        <div class="alfajor alfajor-front"><span></span></div>
-        <p class="art-caption">Una pausa que<br>se toma en serio.</p>
-      </div>
+    <section class="evaluated-hero">
+      <p class="eyebrow"><span></span> Nuestro registro</p>
+      <div class="evaluated-total"><strong id="evaluated-count">0</strong><span>alfajores<br>evaluados</span></div>
     </section>
-
+    <section class="jury-intro">
+      <div class="jury-intro-photo"><img src="/jurados/jurado.png" alt="Foto grupal del jurado" onerror="this.onerror=null; this.src='/jurados/jurado.jpg'" /></div>
+      <div class="jury-intro-copy"><p class="eyebrow"><span></span> Emma presenta</p><h2>Un grupo de amigos,<br>una pasión en común.</h2><p>Somos un grupo de amigos de Córdoba Capital que se reúne para evaluar alfajores, comparar sabores y descubrir cuál merece llegar al primer puesto.</p><a class="text-link" href="#ranking">Conocé nuestro ranking <span>↓</span></a></div>
+    </section>
+    <section class="jury-section" id="jurados">
+      <div class="jury-carousel" aria-label="Testimonios del jurado">
+        <button class="carousel-button carousel-prev" type="button" aria-label="Testimonio anterior">←</button>
+        <div class="jury-slides">
+          <article class="jury-slide is-active"><img src="/jurados/tomas.png" alt="Foto de Tomas"><div><p class="jury-number">01 / JURADO</p><h3>Tomas</h3><p>“Un gran alfajor tiene que respetar el equilibrio: que la masa acompañe, que el relleno abrace y que el último bocado invite a otro.”</p></div></article>
+          <article class="jury-slide"><img src="/jurados/isabella.png" alt="Foto de Isabella"><div><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p>“Busco una experiencia completa: textura, aroma y un sabor que se quede un rato más después de terminarlo.”</p></div></article>
+          <article class="jury-slide"><img src="/jurados/jazmin.png" alt="Foto de Jazmin"><div><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p>“El chocolate puede ser protagonista sin tapar lo demás. La clave está en cómo conversa con la masa y el dulce de leche.”</p></div></article>
+          <article class="jury-slide"><img src="/jurados/gaston.png" alt="Foto de Gaston"><div><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p>“La nota aparece en los detalles: una buena mordida, un baño parejo y esa sensación de querer volver a probar.”</p></div></article>
+          <article class="jury-slide"><img src="/jurados/emma.png" alt="Foto de Emma"><div><p class="jury-number">05 / JURADO</p><h3>Emma</h3><p>“Da da Gu gu Da da daaa Da da Gu gu...Da.”</p></div></article>
+        </div>
+        <button class="carousel-button carousel-next" type="button" aria-label="Testimonio siguiente">→</button>
+      </div>
+      <div class="carousel-dots" aria-label="Seleccionar testimonio"></div>
+    </section>
     <section class="podium-band" id="ranking">
       <div class="section-heading">
         <div><p class="eyebrow"><span></span> Resultados</p><h2>El podio</h2></div>
@@ -209,7 +222,7 @@ document.querySelector('#app').innerHTML = `
       <div class="podium">
         ${rankings.slice(0, 3).map((item, index) => `
           <article class="podium-card place-${item.position} reveal-delay-${index + 1}">
-            <div class="card-image" style="background-image:url('${item.image}')"><span class="place">0${item.position}</span></div>
+            <div class="card-image">${localImageMarkup(item.imageName || item.name)}<span class="place">0${item.position}</span></div>
             <div class="podium-info"><p class="category">${item.type}</p><h3>${item.name}</h3><p class="stars">${stars(item.score)} <small>${item.score}</small></p><p>${item.detail}</p></div>
           </article>
         `).join('')}
@@ -238,17 +251,6 @@ document.querySelector('#app').innerHTML = `
       </div>
     </section>
 
-    <section class="jury-section" id="jurados">
-      <div class="jury-heading"><p class="eyebrow"><span></span> El comité de cata</p><h2>Cinco paladares,<br>una decisión.</h2><p>Conocé a las personas detrás de cada nota. Estos perfiles quedan listos para completar y editar.</p></div>
-      <div class="jury-grid">
-        <article class="jury-card"><div class="jury-photo"><img src="/jurados/tomas.jpg" alt="Foto de Tomas" onerror="this.style.display='none'"><span>T</span></div><div class="jury-info"><p class="jury-number">01 / JURADO</p><h3>Tomas</h3><p class="birth">Fecha de nacimiento: <strong>00 / 00 / 0000</strong></p><p>Amante de los clásicos y defensor de la proporción perfecta entre masa y relleno. Su criterio busca sabores reconocibles y finales memorables.</p></div></article>
-        <article class="jury-card"><div class="jury-photo"><img src="/jurados/isabella.jpg" alt="Foto de Isabella" onerror="this.style.display='none'"><span>I</span></div><div class="jury-info"><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p class="birth">Fecha de nacimiento: <strong>00 / 00 / 0000</strong></p><p>Explora cada textura con curiosidad. Para ella, un gran alfajor necesita equilibrio, aroma y una sorpresa en el último bocado.</p></div></article>
-        <article class="jury-card"><div class="jury-photo"><img src="/jurados/jazmin.jpg" alt="Foto de Jazmin" onerror="this.style.display='none'"><span>J</span></div><div class="jury-info"><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p class="birth">Fecha de nacimiento: <strong>00 / 00 / 0000</strong></p><p>Su radar está puesto en el chocolate y el balance del dulzor. Evalúa con precisión, pero nunca pierde la alegría de compartir.</p></div></article>
-        <article class="jury-card"><div class="jury-photo"><img src="/jurados/gaston.jpg" alt="Foto de Gaston" onerror="this.style.display='none'"><span>G</span></div><div class="jury-info"><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p class="birth">Fecha de nacimiento: <strong>00 / 00 / 0000</strong></p><p>Busca el detalle que separa a un buen alfajor de uno inolvidable. Su nota final combina memoria, técnica y ganas de repetir.</p></div></article>
-        <article class="jury-card"><div class="jury-photo"><img src="/jurados/emma.jpg" alt="Foto de Emma" onerror="this.style.display='none'"><span>E</span></div><div class="jury-info"><p class="jury-number">05 / JURADO</p><h3>Emma</h3><p class="birth">Fecha de nacimiento: <strong>00 / 00 / 0000</strong></p><p>Observa el equilibrio entre todos los elementos y valora esos pequeños detalles que convierten una degustación en una experiencia.</p></div></article>
-      </div>
-    </section>
-
   </main>
   <footer><a class="wordmark" href="#top"><span>E</span>mma<span class="dot">.</span></a><p>Hecho con dulce de leche y criterio.</p><p>Córdoba Capital, Argentina · 2026</p></footer>
 `
@@ -266,3 +268,25 @@ document.addEventListener('click', (event) => {
   button.firstChild.textContent = expanded ? 'Ver todos ' : 'Ver menos '
   button.querySelector('span').textContent = expanded ? '↓' : '↑'
 })
+
+const slides = [...document.querySelectorAll('.jury-slide')]
+const dots = document.querySelector('.carousel-dots')
+let activeSlide = 0
+
+const showSlide = (index) => {
+  activeSlide = (index + slides.length) % slides.length
+  slides.forEach((slide, slideIndex) => slide.classList.toggle('is-active', slideIndex === activeSlide))
+  dots.querySelectorAll('button').forEach((dot, dotIndex) => dot.classList.toggle('is-active', dotIndex === activeSlide))
+}
+
+slides.forEach((_, index) => {
+  const dot = document.createElement('button')
+  dot.type = 'button'
+  dot.ariaLabel = `Ver testimonio ${index + 1}`
+  dot.addEventListener('click', () => showSlide(index))
+  dots.append(dot)
+})
+
+document.querySelector('.carousel-prev').addEventListener('click', () => showSlide(activeSlide - 1))
+document.querySelector('.carousel-next').addEventListener('click', () => showSlide(activeSlide + 1))
+showSlide(0)
