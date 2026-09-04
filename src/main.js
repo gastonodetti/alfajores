@@ -53,6 +53,8 @@ const parseCsv = (csv) => {
 const numericScore = (score) => Number(score.replace(',', '.'))
 
 const capitalizeName = (name) => name ? `${name.charAt(0).toUpperCase()}${name.slice(1)}` : name
+const normalizeName = (name) => name.trim().toLowerCase()
+const formatScore = (score) => score.toFixed(3).replace('.', ',')
 
 const localImageUrl = (name, extension = imageExtensions[0]) => assetUrl(`imagenes/${encodeURIComponent(name.trim())}.${extension}`)
 
@@ -115,18 +117,46 @@ const readPodios = (csv) => {
   return categories
 }
 
+const readCategoryAverages = (categories) => {
+  const scoresByName = {}
+  Object.entries(categories).forEach(([category, items]) => {
+    items.forEach((item) => {
+      const name = normalizeName(item.name)
+      scoresByName[name] ||= {}
+      scoresByName[name][category] ||= []
+      scoresByName[name][category].push(numericScore(item.score))
+    })
+  })
+  return Object.fromEntries(Object.entries(scoresByName).map(([name, scoresByCategory]) => [
+    name,
+    Object.fromEntries(Object.entries(scoresByCategory).map(([category, scores]) => [
+      category,
+      formatScore(scores.reduce((total, score) => total + score, 0) / scores.length),
+    ])),
+  ]))
+}
+
 const addImages = (items) => items.map((item) => ({
   ...item,
   image: localImageUrl(item.imageName || item.name)
 }))
 
+const categoryDetail = (item) => ['A', 'B', 'C'].map((category) => `
+  <div class="ranking-category-score ${item.categoryScores?.[category] ? 'has-score' : ''}">
+    <span>Categoría ${category}</span>
+    <strong>${item.categoryScores?.[category] || 'Sin dato'}</strong>
+    ${item.categoryScores?.[category] ? '<small>/ 10</small>' : ''}
+  </div>
+`).join('')
+
 const rankingRow = (item) => `
   <article class="ranking-row">
     <span class="row-position">${String(item.position).padStart(2, '0')}</span>
     <div class="row-thumb">${localImageMarkup(item.imageName || item.name)}</div>
-    <div class="row-name"><p>${item.type}</p><h3>${item.name}</h3></div>
+    <div class="row-name"><p>${item.type}</p><h3>${item.name}</h3><button class="ranking-detail-toggle" type="button" aria-expanded="false">Ver detalle <span>↓</span></button></div>
     <p class="row-detail">${item.detail}</p>
     <div class="row-score"><strong>${item.score}</strong><span>/ 10</span></div>
+    <div class="ranking-detail"><p class="ranking-detail-title">Promedio por categoría</p><div class="ranking-category-scores">${categoryDetail(item)}</div></div>
   </article>
 `
 
@@ -169,8 +199,9 @@ const loadSheetRankings = async () => {
     if (!response.ok) throw new Error('No se pudo leer la hoja')
     const podiosCsv = await response.text()
     const categories = readPodios(podiosCsv)
+    const categoryAverages = readCategoryAverages(categories)
     animateEvaluatedCount(readEvaluatedTotal(podiosCsv))
-    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '' })))
+    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '', categoryScores: categoryAverages[normalizeName(item.name)] })))
     if (general.length < 5 || Object.values(categories).some((items) => !items.length)) throw new Error('La hoja no tiene suficientes resultados')
     Object.keys(categories).forEach((category) => { categories[category] = addImages(categories[category]) })
     applySheetRankings(general, categories)
@@ -260,6 +291,16 @@ loadSheetRankings()
 setInterval(loadSheetRankings, 60000)
 
 document.addEventListener('click', (event) => {
+  const detailButton = event.target.closest('.ranking-detail-toggle')
+  if (detailButton) {
+    const row = detailButton.closest('.ranking-row')
+    const expanded = detailButton.getAttribute('aria-expanded') === 'true'
+    row.classList.toggle('is-detail-open', !expanded)
+    detailButton.setAttribute('aria-expanded', String(!expanded))
+    detailButton.firstChild.textContent = expanded ? 'Ver detalle ' : 'Ocultar detalle '
+    detailButton.querySelector('span').textContent = expanded ? '↓' : '↑'
+    return
+  }
   const button = event.target.closest('.expand-ranking')
   if (!button) return
   const list = button.previousElementSibling
