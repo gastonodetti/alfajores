@@ -144,11 +144,42 @@ const readVoteAverages = (csv) => {
     }))
     const total = Object.entries(averages).reduce((sum, [criterion, score]) => sum + (score || 0) * criterionWeights[criterion], 0)
     return [name, Object.fromEntries([
+      ['name', votes[0][0].trim()],
       ['Total', total],
       ...Object.entries(averages),
     ].map(([criterion, score]) => [criterion, score === null ? 'Sin dato' : score.toFixed(3).replace('.', ',')]))]
   }))
 }
+
+const awardCriteria = ['Packaging', 'Aestetikness', 'Tamaño', 'Precio/calidad', 'Aroma', 'Textura', 'Sabor']
+
+const awardsMarkup = (voteAverages) => awardCriteria.map((criterion) => {
+  const candidates = Object.values(voteAverages)
+    .filter((item) => item[criterion] && item[criterion] !== 'Sin dato')
+    .sort((first, second) => numericScore(second[criterion]) - numericScore(first[criterion]))
+  const winner = candidates[0]
+  const last = candidates[candidates.length - 1]
+  if (!winner || !last) return ''
+  return `
+    <article class="award-card">
+      <div class="award-heading"><p class="eyebrow"><span></span> ${criterion}</p><h3>${criterion}</h3></div>
+      <div class="award-results">
+        <div class="award-result award-winner">
+          <p>Mejor puntaje</p>
+          <div class="award-image">${localImageMarkup(winner.name)}</div>
+          <h4>${winner.name}</h4>
+          <strong>${winner[criterion]}</strong><small>/ 10</small>
+        </div>
+        <div class="award-result award-last">
+          <p>Menor puntaje</p>
+          <div class="award-image">${localImageMarkup(last.name)}</div>
+          <h4>${last.name}</h4>
+          <strong>${last[criterion]}</strong><small>/ 10</small>
+        </div>
+      </div>
+    </article>
+  `
+}).join('')
 
 const addImages = (items) => items.map((item) => ({
   ...item,
@@ -188,7 +219,7 @@ const rankingList = (items, className = '') => `
   ${items.length > 5 ? '<button class="expand-ranking" type="button" aria-expanded="false">Ver todos <span>↓</span></button>' : ''}
 `
 
-const applySheetRankings = (updatedRankings, categories) => {
+const applySheetRankings = (updatedRankings, categories, voteAverages) => {
   rankings = updatedRankings
   document.querySelectorAll('.podium-card').forEach((card, index) => {
     const item = rankings[index]
@@ -211,6 +242,7 @@ const applySheetRankings = (updatedRankings, categories) => {
       ${items.length > 5 ? '<button class="expand-ranking" type="button" aria-expanded="false">Ver todos <span>↓</span></button>' : ''}
     </div>
   `).join('')
+  document.querySelector('#awards-grid').innerHTML = awardsMarkup(voteAverages)
   const status = document.querySelector('#sheet-status')
   status.textContent = 'Datos en vivo · hoja actualizada'
   status.classList.add('is-live')
@@ -231,7 +263,7 @@ const loadSheetRankings = async () => {
     Object.keys(categories).forEach((category) => {
       categories[category] = addImages(categories[category].map((item) => ({ ...item, criteriaScores: voteAverages[normalizeName(item.name)] })))
     })
-    applySheetRankings(general, categories)
+    applySheetRankings(general, categories, voteAverages)
   } catch (error) {
     animateEvaluatedCount(90)
     document.querySelector('#sheet-status').textContent = 'Mostrando última edición disponible'
@@ -265,8 +297,8 @@ document.querySelector('#app').innerHTML = `
         <div class="jury-slides">
           <article class="jury-slide is-active"><img src="${assetUrl('jurados/tomas.png')}" alt="Foto de Tomas"><div><p class="jury-number">01 / JURADO</p><h3>Tomas</h3><p>“Un gran alfajor tiene que respetar el equilibrio: que la masa acompañe, que el relleno abrace y que el último bocado invite a otro.”</p></div></article>
           <article class="jury-slide"><img src="${assetUrl('jurados/isabella.png')}" alt="Foto de Isabella"><div><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p>“Busco una experiencia completa: textura, aroma y un sabor que se quede un rato más después de terminarlo.”</p></div></article>
-          <article class="jury-slide"><img src="${assetUrl('jurados/jazmin.png')}" alt="Foto de Jazmin"><div><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p>“El chocolate puede ser protagonista sin tapar lo demás. La clave está en cómo conversa con la masa y el dulce de leche.”</p></div></article>
-          <article class="jury-slide"><img src="${assetUrl('jurados/gaston.png')}" alt="Foto de Gaston"><div><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p>“La nota aparece en los detalles: una buena mordida, un baño parejo y esa sensación de querer volver a probar.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/jazmin.png')}" alt="Foto de Jazmin"><div><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p>“El dulce de leche está sobrevalorado. Es la opción fácil, la zona de confort de la repostería. Mi puntaje como jurado va a representar a los valientes, a los alfajores de sabores loquitos que se animan a romper el molde y desafiar al paladar.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/gaston.png')}" alt="Foto de Gaston"><div><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p>“Mientras mas dulce de leche, mejor.”</p></div></article>
           <article class="jury-slide"><img src="${assetUrl('jurados/emma.png')}" alt="Foto de Emma"><div><p class="jury-number">05 / JURADO</p><h3>Emma</h3><p>“Da da Gu gu Da da daaa Da da Gu gu...Da.”</p></div></article>
         </div>
         <button class="carousel-button carousel-next" type="button" aria-label="Testimonio siguiente">→</button>
@@ -308,6 +340,11 @@ document.querySelector('#app').innerHTML = `
         <article><span>06</span><h3>Packaging</h3><p>El diseño, la información y la experiencia de abrir el envoltorio.</p></article>
         <article><span>07</span><h3>Tamaño</h3><p>La proporción y presencia del alfajor en relación con cada bocado.</p></article>
       </div>
+    </section>
+
+    <section class="awards" id="premios">
+      <div class="awards-heading"><p class="eyebrow"><span></span> Distinciones</p><h2>Premios</h2><p>El mejor y el menor puntaje en cada criterio, según el promedio de los votos del jurado.</p></div>
+      <div id="awards-grid" class="awards-grid"></div>
     </section>
 
   </main>
