@@ -23,10 +23,11 @@ h1, h2, h3, p { margin-top: 0; } h1 { margin-bottom: 24px; color: #332a24; font-
 .ranking-detail { display: none; grid-column: 1 / -1; padding: 20px 0 4px; border-top: 1px solid #d7cfc4; }
 .ranking-row.is-detail-open .ranking-detail { display: block; animation: ranking-detail-in .25s ease both; }
 .ranking-detail-title { margin: 0 0 12px; color: #766a60; font: 700 9px Arial, sans-serif; letter-spacing: 1.5px; text-transform: uppercase; }
-.ranking-category-scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.ranking-category-scores { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
 .ranking-category-score { padding: 13px 14px; background: #e8dbc8; color: #9b8d81; }
 .ranking-category-score span { display: block; margin-bottom: 8px; font: 700 9px Arial, sans-serif; letter-spacing: 1px; text-transform: uppercase; }
 .ranking-category-score strong { display: block; color: #9b8d81; font: 500 25px Georgia, serif; }
 .ranking-category-score small { color: #766a60; font: 10px Arial, sans-serif; }
 .ranking-category-score.has-score strong { color: #b85c38; }
 @keyframes ranking-detail-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+@media (max-width: 760px) { .ranking-category-scores { grid-template-columns: repeat(2, 1fr); } }
