@@ -55,6 +55,8 @@ const numericScore = (score) => Number(score.replace(',', '.'))
 const capitalizeName = (name) => name ? `${name.charAt(0).toUpperCase()}${name.slice(1)}` : name
 const normalizeName = (name) => name.trim().toLowerCase()
 const evaluationCriteria = ['Total', 'Aroma', 'Textura', 'Sabor', 'Precio/calidad', 'Aestetikness', 'Packaging', 'Tamaño']
+const criterionWeights = { Aroma: 0.1, Textura: 0.1, Sabor: 0.3, 'Precio/calidad': 0.15, Aestetikness: 0.1, Packaging: 0.1, Tamaño: 0.15 }
+const voteColumns = { Aroma: 4, Textura: 5, Sabor: 6, 'Precio/calidad': 3, Aestetikness: 1, Packaging: 0, Tamaño: 2 }
 
 const localImageUrl = (name, extension = imageExtensions[0]) => assetUrl(`imagenes/${encodeURIComponent(name.trim())}.${extension}`)
 
@@ -117,13 +119,30 @@ const readPodios = (csv) => {
   return categories
 }
 
-const readReports = (csv) => {
+const readVoteAverages = (csv) => {
   const rows = parseCsv(csv)
-  return Object.fromEntries(rows.slice(2).map((row) => {
+  const votesByName = {}
+  rows.slice(2).forEach((row) => {
     const name = row[0]?.trim()
-    if (!name) return ['', {}]
-    return [normalizeName(name), Object.fromEntries(evaluationCriteria.map((criterion, index) => [criterion, row[index + 1]?.trim() || 'Sin dato']))]
-  }).filter(([name]) => name))
+    if (!name) return
+    const normalizedName = normalizeName(name)
+    votesByName[normalizedName] ||= []
+    votesByName[normalizedName].push(row)
+  })
+  return Object.fromEntries(Object.entries(votesByName).map(([name, votes]) => {
+    const averages = Object.fromEntries(Object.entries(voteColumns).map(([criterion, column]) => {
+      const scores = votes.map((vote) => {
+        const value = vote[column + 2]?.trim()
+        return value ? numericScore(value) : NaN
+      }).filter(Number.isFinite)
+      return [criterion, scores.length ? scores.reduce((total, score) => total + score, 0) / scores.length : null]
+    }))
+    const total = Object.entries(averages).reduce((sum, [criterion, score]) => sum + (score || 0) * criterionWeights[criterion], 0)
+    return [name, Object.fromEntries([
+      ['Total', total],
+      ...Object.entries(averages),
+    ].map(([criterion, score]) => [criterion, score === null ? 'Sin dato' : score.toFixed(3).replace('.', ',')]))]
+  }))
 }
 
 const addImages = (items) => items.map((item) => ({
@@ -188,11 +207,11 @@ const loadSheetRankings = async () => {
     if (!response.ok) throw new Error('No se pudo leer la hoja')
     const podiosCsv = await response.text()
     const categories = readPodios(podiosCsv)
-    const reportsResponse = await fetch(sheetUrl('reportes'))
-    if (!reportsResponse.ok) throw new Error('No se pudo leer la hoja de reportes')
-    const reports = readReports(await reportsResponse.text())
+    const dataResponse = await fetch(sheetUrl('data'))
+    if (!dataResponse.ok) throw new Error('No se pudo leer la hoja de votos')
+    const voteAverages = readVoteAverages(await dataResponse.text())
     animateEvaluatedCount(readEvaluatedTotal(podiosCsv))
-    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '', criteriaScores: reports[normalizeName(item.name)] })))
+    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '', criteriaScores: voteAverages[normalizeName(item.name)] })))
     if (general.length < 5 || Object.values(categories).some((items) => !items.length)) throw new Error('La hoja no tiene suficientes resultados')
     Object.keys(categories).forEach((category) => { categories[category] = addImages(categories[category]) })
     applySheetRankings(general, categories)
