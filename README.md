@@ -1,4 +1,4 @@
-# Emma
+# Mundial de Alfajores
 
 Ranking informativo de alfajores conectado a Google Sheets.
 

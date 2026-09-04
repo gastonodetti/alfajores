@@ -182,7 +182,7 @@ const loadSheetRankings = async () => {
 
 document.querySelector('#app').innerHTML = `
   <header class="site-header">
-    <a class="wordmark" href="#top" aria-label="Emma, inicio"><span>E</span>mma<span class="dot">.</span></a>
+    <a class="wordmark" href="#top" aria-label="Mundial de Alfajores, inicio"><span>M</span>undial de Alfajores</a>
     <nav aria-label="Navegación principal">
       <a class="active" href="#ranking">Ranking</a>
       <a href="#categorias">Categorías</a>
@@ -199,7 +199,7 @@ document.querySelector('#app').innerHTML = `
     </section>
     <section class="jury-intro">
       <div class="jury-intro-photo"><img src="${assetUrl('jurados/jurado.png')}" alt="Foto grupal del jurado" onerror="this.onerror=null; this.src='${assetUrl('jurados/jurado.jpg')}'" /></div>
-      <div class="jury-intro-copy"><p class="eyebrow"><span></span> Emma presenta</p><h2>Un grupo de amigos,<br>una pasión en común.</h2><p>Somos un grupo de amigos de Córdoba Capital que se reúne para evaluar alfajores, comparar sabores y descubrir cuál merece llegar al primer puesto.</p><a class="text-link" href="#ranking">Conocé nuestro ranking <span>↓</span></a></div>
+      <div class="jury-intro-copy"><p class="eyebrow"><span></span> Mundial de Alfajores presenta</p><h2>Un grupo de amigos,<br>una pasión en común.</h2><p>Somos un grupo de amigos de Córdoba Capital que se reúne para evaluar alfajores, comparar sabores y descubrir cuál merece llegar al primer puesto.</p><a class="text-link" href="#ranking">Conocé nuestro ranking <span>↓</span></a></div>
     </section>
     <section class="jury-section" id="jurados">
       <div class="jury-carousel" aria-label="Testimonios del jurado">
@@ -253,7 +253,7 @@ document.querySelector('#app').innerHTML = `
     </section>
 
   </main>
-  <footer><a class="wordmark" href="#top"><span>E</span>mma<span class="dot">.</span></a><p>Hecho con dulce de leche y criterio.</p><p>Córdoba Capital, Argentina · 2026</p></footer>
+  <footer><a class="wordmark" href="#top"><span>M</span>undial de Alfajores</a><p>Hecho con dulce de leche y criterio.</p><p>Córdoba Capital, Argentina · 2026</p></footer>
 `
 
 loadSheetRankings()
