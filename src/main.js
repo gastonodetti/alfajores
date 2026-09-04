@@ -57,6 +57,11 @@ const normalizeName = (name) => name.trim().toLowerCase()
 const evaluationCriteria = ['Total', 'Aroma', 'Textura', 'Sabor', 'Precio/calidad', 'Aestetikness', 'Packaging', 'Tamaño']
 const criterionWeights = { Aroma: 0.1, Textura: 0.1, Sabor: 0.3, 'Precio/calidad': 0.15, Aestetikness: 0.1, Packaging: 0.1, Tamaño: 0.15 }
 const voteColumns = { Aroma: 4, Textura: 5, Sabor: 6, 'Precio/calidad': 3, Aestetikness: 1, Packaging: 0, Tamaño: 2 }
+const categoryDescriptions = {
+  A: 'Alfajores premium, elegidos por su propuesta, calidad y experiencia.',
+  B: 'Alfajores comunes para el día a día, ricos y confiables.',
+  C: 'Alfajores económicos, para disfrutar sin gastar de más.',
+}
 
 const localImageUrl = (name, extension = imageExtensions[0]) => assetUrl(`imagenes/${encodeURIComponent(name.trim())}.${extension}`)
 
@@ -168,6 +173,16 @@ const rankingRow = (item) => `
   </article>
 `
 
+const categoryRow = (item) => `
+  <article class="category-row">
+    <strong>${String(item.position).padStart(2, '0')}</strong>
+    <div class="category-thumb">${localImageMarkup(item.imageName || item.name)}</div>
+    <div class="category-row-name"><h4>${item.name}</h4><button class="ranking-detail-toggle" type="button" aria-expanded="false">Ver detalle <span>↓</span></button></div>
+    <span>${item.score} / 10</span>
+    <div class="category-detail"><p class="ranking-detail-title">Resultado por criterio de evaluación</p><div class="ranking-category-scores">${categoryDetail(item)}</div></div>
+  </article>
+`
+
 const rankingList = (items, className = '') => `
   <div class="ranking-list ${className}">${items.map(rankingRow).join('')}</div>
   ${items.length > 5 ? '<button class="expand-ranking" type="button" aria-expanded="false">Ver todos <span>↓</span></button>' : ''}
@@ -191,8 +206,8 @@ const applySheetRankings = (updatedRankings, categories) => {
   document.querySelector('#general-ranking-list').innerHTML = rankingList(rankings)
   document.querySelector('#category-sections').innerHTML = Object.entries(categories).map(([category, items]) => `
     <div class="category-block">
-      <div class="category-heading"><p class="eyebrow"><span></span> Categoría ${category}</p><h3>Ranking ${category}</h3><p>${items.length} alfajores evaluados</p></div>
-      <div class="category-list">${items.map((item) => `<div class="category-row"><strong>${String(item.position).padStart(2, '0')}</strong><div class="category-thumb">${localImageMarkup(item.imageName || item.name)}</div><h4>${item.name}</h4><span>${item.score} / 10</span></div>`).join('')}</div>
+      <div class="category-heading"><p class="eyebrow"><span></span> Categoría ${category}</p><h3>Categoría ${category}</h3><p>${categoryDescriptions[category]}<br><strong>${items.length} alfajores evaluados</strong></p></div>
+      <div class="category-list">${items.map(categoryRow).join('')}</div>
       ${items.length > 5 ? '<button class="expand-ranking" type="button" aria-expanded="false">Ver todos <span>↓</span></button>' : ''}
     </div>
   `).join('')
@@ -213,7 +228,9 @@ const loadSheetRankings = async () => {
     animateEvaluatedCount(readEvaluatedTotal(podiosCsv))
     const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '', criteriaScores: voteAverages[normalizeName(item.name)] })))
     if (general.length < 5 || Object.values(categories).some((items) => !items.length)) throw new Error('La hoja no tiene suficientes resultados')
-    Object.keys(categories).forEach((category) => { categories[category] = addImages(categories[category]) })
+    Object.keys(categories).forEach((category) => {
+      categories[category] = addImages(categories[category].map((item) => ({ ...item, criteriaScores: voteAverages[normalizeName(item.name)] })))
+    })
     applySheetRankings(general, categories)
   } catch (error) {
     animateEvaluatedCount(90)
@@ -303,7 +320,7 @@ setInterval(loadSheetRankings, 60000)
 document.addEventListener('click', (event) => {
   const detailButton = event.target.closest('.ranking-detail-toggle')
   if (detailButton) {
-    const row = detailButton.closest('.ranking-row')
+    const row = detailButton.closest('.ranking-row, .category-row')
     const expanded = detailButton.getAttribute('aria-expanded') === 'true'
     row.classList.toggle('is-detail-open', !expanded)
     detailButton.setAttribute('aria-expanded', String(!expanded))

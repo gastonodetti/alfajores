@@ -231,6 +231,22 @@
   text-align: right;
 }
 
+.category-row-name {
+  min-width: 0;
+}
+
+.category-detail {
+  display: none;
+  grid-column: 1 / -1;
+  padding: 20px 0 4px;
+  border-top: 1px solid #685b52;
+}
+
+.category-row.is-detail-open .category-detail {
+  display: block;
+  animation: ranking-detail-in .25s ease both;
+}
+
 #general-ranking-list .expand-ranking {
   color: #b85c38;
   border-color: #b85c38;
@@ -403,6 +419,10 @@
 
   .category-row > span {
     font-size: 12px;
+  }
+
+  .category-detail {
+    padding-top: 16px;
   }
 
   .jury-section {
