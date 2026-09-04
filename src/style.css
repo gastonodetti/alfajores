@@ -31,36 +31,3 @@ h1, h2, h3, p { margin-top: 0; } h1 { margin-bottom: 24px; color: #332a24; font-
 .ranking-category-score.has-score strong { color: #b85c38; }
 @keyframes ranking-detail-in { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
 @media (max-width: 760px) { .ranking-category-scores { grid-template-columns: repeat(2, 1fr); } }
-
-.awards { padding: 100px 6vw 110px; background: #332a24; color: #f7f3eb; }
-.awards-heading { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 5%; align-items: end; margin-bottom: 48px; }
-.awards-heading .eyebrow { margin: 0; color: #d7aa62; }
-.awards-heading .eyebrow span { background: #d7aa62; }
-.awards-heading h2 { margin: 0; color: #f7f3eb; font-size: clamp(45px, 5vw, 70px); line-height: .9; letter-spacing: -3px; font-weight: 500; }
-.awards-heading > p:last-child { margin: 0; color: #b8aaa0; font-size: 14px; line-height: 1.45; }
-.awards-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
-.award-card { padding: 25px; background: #f7f3eb; color: #332a24; }
-.award-heading { display: flex; justify-content: space-between; align-items: end; gap: 20px; margin-bottom: 22px; }
-.award-heading .eyebrow { margin: 0; }
-.award-heading h3 { margin: 0; color: #b85c38; font-size: 25px; font-weight: 500; text-align: right; }
-.award-results { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-.award-result { position: relative; padding: 14px; background: #e8dbc8; }
-.award-result p { margin: 0 0 12px; color: #766a60; font: 700 9px Arial, sans-serif; letter-spacing: 1.2px; text-transform: uppercase; }
-.award-winner { background: #d7aa62; color: #332a24; }
-.award-winner p { color: #332a24; }
-.award-image { height: 125px; margin-bottom: 14px; background: #e8dbc8; overflow: hidden; }
-.award-image img { width: 100%; height: 100%; display: block; object-fit: contain; }
-.award-result h4 { min-height: 42px; margin: 0 0 9px; font-size: 18px; font-weight: 500; }
-.award-result strong { color: #b85c38; font: 500 30px Georgia, serif; }
-.award-winner strong { color: #332a24; }
-.award-result small { margin-left: 5px; color: #766a60; font: 10px Arial, sans-serif; }
-.award-winner small { color: #332a24; }
-@media (max-width: 760px) {
-	.awards { padding: 65px 7vw 75px; }
-	.awards-heading { display: block; margin-bottom: 35px; }
-	.awards-heading h2 { margin: 20px 0 15px; }
-	.awards-grid { grid-template-columns: 1fr; gap: 16px; }
-	.award-card { padding: 18px; }
-	.award-heading h3 { font-size: 21px; }
-	.award-image { height: 110px; }
-}
