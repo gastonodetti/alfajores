@@ -288,13 +288,14 @@ document.querySelector('#app').innerHTML = `
       </div>
     </section>
 
-    <section class="full-ranking">
-      <div class="ranking-title"><p class="eyebrow"><span></span> Ranking general</p><h2>Del primero<br>al último bocado.</h2></div>
-      <div id="general-ranking-list">${rankingList(rankings)}</div>
-    </section>
 
     <section class="category-rankings" id="categorias">
       <div id="category-sections"></div>
+    </section>
+
+    <section class="full-ranking">
+      <div class="ranking-title"><p class="eyebrow"><span></span> Ranking general</p><h2>Del primero<br>al último bocado.</h2></div>
+      <div id="general-ranking-list">${rankingList(rankings)}</div>
     </section>
 
     <section class="criteria" id="criterios">
