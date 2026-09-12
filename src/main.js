@@ -57,9 +57,22 @@ const capitalizeName = (name) => {
   return trimmed ? `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}` : name
 }
 const normalizeName = (name) => name.trim().toLowerCase()
-const canonicalAssetName = (name) => {
-  const trimmed = name?.trim()
-  return trimmed ? `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1).toLowerCase()}` : name
+const assetNameCandidates = (name) => {
+  const trimmed = (name || '').trim()
+  if (!trimmed) return []
+  const candidates = []
+  const seen = new Set()
+  const addCandidate = (candidate) => {
+    const value = candidate.trim()
+    if (!value || seen.has(value)) return
+    seen.add(value)
+    candidates.push(value)
+  }
+  addCandidate(trimmed)
+  addCandidate(capitalizeName(trimmed))
+  addCandidate(trimmed.toLowerCase())
+  addCandidate(trimmed.split(/\s+/).map((word) => word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word).join(' '))
+  return candidates
 }
 const evaluationCriteria = ['Total', 'Aroma', 'Textura', 'Sabor', 'Precio/calidad', 'Aestetikness', 'Packaging', 'Tamaño']
 const criterionWeights = { Aroma: 0.1, Textura: 0.1, Sabor: 0.3, 'Precio/calidad': 0.15, Aestetikness: 0.1, Packaging: 0.1, Tamaño: 0.15 }
@@ -70,24 +83,37 @@ const categoryDescriptions = {
   C: 'Alfajores económicos, para disfrutar sin gastar de más.',
 }
 
-const localImageUrl = (name, extension = imageExtensions[0]) => {
-  const assetName = canonicalAssetName(name)
+const localImageUrl = (name, extension = imageExtensions[0], candidateIndex = 0) => {
+  const candidates = assetNameCandidates(name)
+  const assetName = candidates[candidateIndex] || candidates[0] || name.trim()
   return assetUrl(`imagenes/${encodeURIComponent(assetName)}.${extension}`)
 }
 
 const localImageMarkup = (name) => {
-  const assetName = canonicalAssetName(name)
-  return `<img src="${localImageUrl(name)}" data-image-name="${assetName}" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
+  const candidates = assetNameCandidates(name)
+  return `<img src="${localImageUrl(name)}" data-image-name="${name.trim()}" data-image-candidates="${encodeURIComponent(JSON.stringify(candidates))}" data-image-variant-index="0" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
 }
 
 window.tryNextLocalImage = (image) => {
+  const candidates = JSON.parse(decodeURIComponent(image.dataset.imageCandidates || '[]'))
+  const candidateIndex = Number(image.dataset.imageVariantIndex || 0)
   const nextExtension = Number(image.dataset.imageExtension) + 1
-  if (nextExtension >= imageExtensions.length) {
-    image.style.display = 'none'
+
+  if (nextExtension < imageExtensions.length) {
+    image.dataset.imageExtension = String(nextExtension)
+    image.src = localImageUrl(candidates[candidateIndex] || image.dataset.imageName, imageExtensions[nextExtension], candidateIndex)
     return
   }
-  image.dataset.imageExtension = nextExtension
-  image.src = localImageUrl(image.dataset.imageName, imageExtensions[nextExtension])
+
+  const nextCandidateIndex = candidateIndex + 1
+  if (nextCandidateIndex < candidates.length) {
+    image.dataset.imageVariantIndex = String(nextCandidateIndex)
+    image.dataset.imageExtension = '0'
+    image.src = localImageUrl(candidates[nextCandidateIndex], imageExtensions[0], nextCandidateIndex)
+    return
+  }
+
+  image.style.display = 'none'
 }
 
 const animateEvaluatedCount = (total) => {
