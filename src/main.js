@@ -57,23 +57,7 @@ const capitalizeName = (name) => {
   return trimmed ? `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}` : name
 }
 const normalizeName = (name) => name.trim().toLowerCase()
-const assetNameCandidates = (name) => {
-  const trimmed = (name || '').trim()
-  if (!trimmed) return []
-  const candidates = []
-  const seen = new Set()
-  const addCandidate = (candidate) => {
-    const value = candidate.trim()
-    if (!value || seen.has(value)) return
-    seen.add(value)
-    candidates.push(value)
-  }
-  addCandidate(trimmed)
-  addCandidate(capitalizeName(trimmed))
-  addCandidate(trimmed.toLowerCase())
-  addCandidate(trimmed.split(/\s+/).map((word) => word ? `${word.charAt(0).toUpperCase()}${word.slice(1)}` : word).join(' '))
-  return candidates
-}
+const assetName = (name) => capitalizeName(name)
 const evaluationCriteria = ['Total', 'Aroma', 'Textura', 'Sabor', 'Precio/calidad', 'Aestetikness', 'Packaging', 'Tamaño']
 const criterionWeights = { Aroma: 0.1, Textura: 0.1, Sabor: 0.3, 'Precio/calidad': 0.15, Aestetikness: 0.1, Packaging: 0.1, Tamaño: 0.15 }
 const voteColumns = { Aroma: 4, Textura: 5, Sabor: 6, 'Precio/calidad': 3, Aestetikness: 1, Packaging: 0, Tamaño: 2 }
@@ -83,37 +67,18 @@ const categoryDescriptions = {
   C: 'Alfajores económicos, para disfrutar sin gastar de más.',
 }
 
-const localImageUrl = (name, extension = imageExtensions[0], candidateIndex = 0) => {
-  const candidates = assetNameCandidates(name)
-  const assetName = candidates[candidateIndex] || candidates[0] || name.trim()
-  return assetUrl(`imagenes/${encodeURIComponent(assetName)}.${extension}`)
-}
+const localImageUrl = (name, extension = imageExtensions[0]) => assetUrl(`imagenes/${encodeURIComponent(assetName(name))}.${extension}`)
 
-const localImageMarkup = (name) => {
-  const candidates = assetNameCandidates(name)
-  return `<img src="${localImageUrl(name)}" data-image-name="${name.trim()}" data-image-candidates="${encodeURIComponent(JSON.stringify(candidates))}" data-image-variant-index="0" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
-}
+const localImageMarkup = (name) => `<img src="${localImageUrl(name)}" data-image-name="${assetName(name)}" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
 
 window.tryNextLocalImage = (image) => {
-  const candidates = JSON.parse(decodeURIComponent(image.dataset.imageCandidates || '[]'))
-  const candidateIndex = Number(image.dataset.imageVariantIndex || 0)
   const nextExtension = Number(image.dataset.imageExtension) + 1
-
-  if (nextExtension < imageExtensions.length) {
-    image.dataset.imageExtension = String(nextExtension)
-    image.src = localImageUrl(candidates[candidateIndex] || image.dataset.imageName, imageExtensions[nextExtension], candidateIndex)
+  if (nextExtension >= imageExtensions.length) {
+    image.style.display = 'none'
     return
   }
-
-  const nextCandidateIndex = candidateIndex + 1
-  if (nextCandidateIndex < candidates.length) {
-    image.dataset.imageVariantIndex = String(nextCandidateIndex)
-    image.dataset.imageExtension = '0'
-    image.src = localImageUrl(candidates[nextCandidateIndex], imageExtensions[0], nextCandidateIndex)
-    return
-  }
-
-  image.style.display = 'none'
+  image.dataset.imageExtension = nextExtension
+  image.src = localImageUrl(image.dataset.imageName, imageExtensions[nextExtension])
 }
 
 const animateEvaluatedCount = (total) => {
@@ -157,7 +122,8 @@ const readPodios = (csv) => {
       const score = row[column + 1]?.trim()
       if (!name || !/^\d{1,2}(?:,\d{1,3})?$/.test(score)) return
       const position = categories[category].length + 1
-      categories[category].push({ name: capitalizeName(name), imageName: name, score, category, position, type: `Categoría ${category}`, detail: `Puesto ${position} de la categoría ${category}.` })
+      const normalizedImageName = capitalizeName(name)
+      categories[category].push({ name: capitalizeName(name), imageName: normalizedImageName, score, category, position, type: `Categoría ${category}`, detail: `Puesto ${position} de la categoría ${category}.` })
     })
   })
   return categories
@@ -193,6 +159,11 @@ const addImages = (items) => items.map((item) => ({
   ...item,
   image: localImageUrl(item.imageName || item.name)
 }))
+
+const withNormalizedImageName = (item) => ({
+  ...item,
+  imageName: assetName(item.imageName || item.name),
+})
 
 const categoryDetail = (item) => evaluationCriteria.map((criterion) => `
   <div class="ranking-category-score ${item.criteriaScores?.[criterion] && item.criteriaScores[criterion] !== 'Sin dato' ? 'has-score' : ''}">
@@ -265,10 +236,10 @@ const loadSheetRankings = async () => {
     if (!dataResponse.ok) throw new Error('No se pudo leer la hoja de votos')
     const voteAverages = readVoteAverages(await dataResponse.text())
     animateEvaluatedCount(readEvaluatedTotal(podiosCsv))
-    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => ({ ...item, position: index + 1, type: 'Ranking general', detail: '', criteriaScores: voteAverages[normalizeName(item.name)] })))
+    const general = addImages(Object.values(categories).flat().sort((first, second) => numericScore(second.score) - numericScore(first.score)).map((item, index) => withNormalizedImageName({ ...item, position: index + 1, type: 'Ranking general', detail: '', criteriaScores: voteAverages[normalizeName(item.name)] })))
     if (general.length < 5 || Object.values(categories).some((items) => !items.length)) throw new Error('La hoja no tiene suficientes resultados')
     Object.keys(categories).forEach((category) => {
-      categories[category] = addImages(categories[category].map((item) => ({ ...item, criteriaScores: voteAverages[normalizeName(item.name)] })))
+      categories[category] = addImages(categories[category].map((item) => withNormalizedImageName({ ...item, criteriaScores: voteAverages[normalizeName(item.name)] })))
     })
     applySheetRankings(general, categories)
   } catch (error) {
@@ -303,7 +274,7 @@ document.querySelector('#app').innerHTML = `
         <button class="carousel-button carousel-prev" type="button" aria-label="Testimonio anterior">←</button>
         <div class="jury-slides">
           <article class="jury-slide is-active"><img src="${assetUrl('jurados/tomas.png')}" alt="Foto de Tomas"><div><p class="jury-number">01 / JURADO</p><h3>Tomas</h3><p>“Un gran alfajor tiene que respetar el equilibrio: que la masa acompañe, que el relleno abrace y que el último bocado invite a otro.”</p></div></article>
-          <article class="jury-slide"><img src="${assetUrl('jurados/isabella.png')}" alt="Foto de Isabella"><div><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p>“Busco una experiencia completa: textura, aroma y un sabor que se quede un rato más después de terminarlo.”</p></div></article>
+          <article class="jury-slide"><img src="${assetUrl('jurados/isabella.png')}" alt="Foto de Isabella"><div><p class="jury-number">02 / JURADO</p><h3>Isabella</h3><p>“Juzgar un alfajor no es elegir el más extravagante. Es reconocer el que logra que todo funcione: textura, sabor, proporción y estética. La creatividad suma; el equilibrio decide.”</p></div></article>
           <article class="jury-slide"><img src="${assetUrl('jurados/jazmin.png')}" alt="Foto de Jazmin"><div><p class="jury-number">03 / JURADO</p><h3>Jazmin</h3><p>“El dulce de leche está sobrevalorado. Es la opción fácil, la zona de confort de la repostería. Mi puntaje como jurado va a representar a los valientes, a los alfajores de sabores loquitos que se animan a romper el molde y desafiar al paladar.”</p></div></article>
           <article class="jury-slide"><img src="${assetUrl('jurados/gaston.png')}" alt="Foto de Gaston"><div><p class="jury-number">04 / JURADO</p><h3>Gaston</h3><p>“Mientras mas dulce de leche, mejor.”</p></div></article>
           <article class="jury-slide"><img src="${assetUrl('jurados/emma.png')}" alt="Foto de Emma"><div><p class="jury-number">05 / JURADO</p><h3>Emma</h3><p>“Da da Gu gu Da da daaa Da da Gu gu...Da.”</p></div></article>
@@ -314,17 +285,10 @@ document.querySelector('#app').innerHTML = `
     </section>
     <section class="podium-band" id="ranking">
       <div class="section-heading">
-        <div><p class="eyebrow"><span></span> Resultados</p><h2>El podio</h2></div>
+        <div><p class="eyebrow"><span></span> Por categoría</p><h2>Resultados</h2></div>
         <p class="section-note"><span id="sheet-status">Cargando resultados...</span><br>Una sola pregunta: ¿cuál es el mejor?</p>
       </div>
-      <div class="podium">
-        ${rankings.slice(0, 3).map((item, index) => `
-          <article class="podium-card place-${item.position} reveal-delay-${index + 1}">
-            <div class="card-image">${localImageMarkup(item.imageName || item.name)}<span class="place">0${item.position}</span></div>
-            <div class="podium-info"><p class="category">${item.type}</p><h3>${item.name}</h3><p class="stars">${stars(item.score)} <small>${item.score}</small></p><p>${item.detail}</p></div>
-          </article>
-        `).join('')}
-      </div>
+      
     </section>
 
 
@@ -333,7 +297,7 @@ document.querySelector('#app').innerHTML = `
     </section>
 
     <section class="full-ranking">
-      <div class="ranking-title"><p class="eyebrow"><span></span> Ranking general</p><h2>Del primero<br>al último bocado.</h2></div>
+      <div class="ranking-title"><p class="eyebrow"><span></span> Ranking general</p><h2>Del primer<br>al último bocado.</h2></div>
       <div id="general-ranking-list">${rankingList(rankings)}</div>
     </section>
 
