@@ -52,8 +52,15 @@ const parseCsv = (csv) => {
 
 const numericScore = (score) => Number(score.replace(',', '.'))
 
-const capitalizeName = (name) => name ? `${name.charAt(0).toUpperCase()}${name.slice(1)}` : name
+const capitalizeName = (name) => {
+  const trimmed = name?.trim()
+  return trimmed ? `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1)}` : name
+}
 const normalizeName = (name) => name.trim().toLowerCase()
+const canonicalAssetName = (name) => {
+  const trimmed = name?.trim()
+  return trimmed ? `${trimmed.charAt(0).toUpperCase()}${trimmed.slice(1).toLowerCase()}` : name
+}
 const evaluationCriteria = ['Total', 'Aroma', 'Textura', 'Sabor', 'Precio/calidad', 'Aestetikness', 'Packaging', 'Tamaño']
 const criterionWeights = { Aroma: 0.1, Textura: 0.1, Sabor: 0.3, 'Precio/calidad': 0.15, Aestetikness: 0.1, Packaging: 0.1, Tamaño: 0.15 }
 const voteColumns = { Aroma: 4, Textura: 5, Sabor: 6, 'Precio/calidad': 3, Aestetikness: 1, Packaging: 0, Tamaño: 2 }
@@ -63,9 +70,15 @@ const categoryDescriptions = {
   C: 'Alfajores económicos, para disfrutar sin gastar de más.',
 }
 
-const localImageUrl = (name, extension = imageExtensions[0]) => assetUrl(`imagenes/${encodeURIComponent(name.trim())}.${extension}`)
+const localImageUrl = (name, extension = imageExtensions[0]) => {
+  const assetName = canonicalAssetName(name)
+  return assetUrl(`imagenes/${encodeURIComponent(assetName)}.${extension}`)
+}
 
-const localImageMarkup = (name) => `<img src="${localImageUrl(name)}" data-image-name="${name.trim()}" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
+const localImageMarkup = (name) => {
+  const assetName = canonicalAssetName(name)
+  return `<img src="${localImageUrl(name)}" data-image-name="${assetName}" data-image-extension="0" alt="Imagen de ${name}" loading="lazy" onerror="tryNextLocalImage(this)">`
+}
 
 window.tryNextLocalImage = (image) => {
   const nextExtension = Number(image.dataset.imageExtension) + 1
